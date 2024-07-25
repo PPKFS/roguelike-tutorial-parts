@@ -16,6 +16,16 @@ import BearLibTerminal
 import Control.Monad.Trans.State
 import Control.Monad (when)
 
+import HsRogue.Object
+
+{-
+For part 2, the original tutorial extracts things to an "Engine" class. We don't need to do that. The Engine class in the python tutorial:
+- has some game state (which we have in our State monad)
+- has some methods for each part of the game loop (which we have as just regular functions)
+- has some initialisation logic (which we have in our call to `withWindow`)
+- an event handler (which again, is just a bunch of functions glued together. we...can just use functions)
+-}
+
 screenSize :: V2
 screenSize = V2 100 50
 
@@ -25,7 +35,7 @@ initialPlayerPosition = V2 20 20
 type Game a = StateT WorldState IO a
 
 data WorldState = WorldState
-  { playerPosition :: V2
+  { objects :: IM.IntMap Object
   , pendingQuit :: Bool
   }
 

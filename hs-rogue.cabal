@@ -18,6 +18,7 @@ common warnin
 
 executable hs-rogue-simple
     main-is:          Main.hs
+    other-modules: HsRogue.Object
 
     default-extensions:
         LambdaCase
