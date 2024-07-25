@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+    - path: "app-simple"
+      component: "executable:hs-rogue-simple"

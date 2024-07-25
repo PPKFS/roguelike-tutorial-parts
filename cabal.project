@@ -1,0 +1,12 @@
+source-repository-package
+  type: git
+  location: https://github.com/PPKFS/roguefunctor.git
+  branch: main
+  tag: head
+source-repository-package
+  type: git
+  location: https://github.com/PPKFS/bearlibterminal-hs.git
+  branch: main
+  tag: ea9b6843a5caf678a81d34b2c443e7dfd7db2ec3
+packages:
+  hs-rogue.cabal

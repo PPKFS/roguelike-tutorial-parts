@@ -1,0 +1,53 @@
+cabal-version: 3.6
+name:          hs-rogue
+version:       0.0.1
+synopsis:      r/roguelikedev does the roguelike tutorial 2024
+description:   r/roguelikedev does the roguelike tutorial 2024
+homepage:      https://github.com/PPKFS/tony-zorks-rogue-skater
+bug-reports:   https://github.com/PPKFS/tony-zorks-rogue-skater/issues
+license:       MIT
+author:        Avery
+maintainer:    Avery <thecommunistduck@hotmail.co.uk>
+copyright:     2022-2023 Avery
+category:      Game Development
+build-type:    Simple
+tested-with:   GHC == 9.4.7
+
+common warnin
+
+
+executable hs-rogue-simple
+    main-is:          Main.hs
+
+    default-extensions:
+        LambdaCase
+        OverloadedStrings
+    build-depends:
+        base ^>=4.19.1.0
+        , bearlibterminal
+        , roguefunctor
+        , containers
+        , transformers
+    hs-source-dirs:   app-simple
+    default-language: GHC2021
+    ghc-options: -Wall
+
+executable hs-rogue-full
+    main-is:          Main.hs
+
+    default-extensions:
+        NoImplicitPrelude
+        LambdaCase
+        OverloadedLabels
+        DerivingStrategies
+        OverloadedStrings
+    build-depends:
+        base ^>=4.19.1.0
+        , bearlibterminal
+        , roguefunctor
+        , containers
+        , optics
+        , mtl
+    hs-source-dirs: app-full
+    default-language: GHC2021
+    ghc-options: -Wall
