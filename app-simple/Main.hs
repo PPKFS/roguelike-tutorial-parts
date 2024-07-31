@@ -17,14 +17,9 @@ import Control.Monad.Trans.State
 import Control.Monad (when)
 
 import HsRogue.Object
+import qualified Data.IntMap as IM
 
-{-
-For part 2, the original tutorial extracts things to an "Engine" class. We don't need to do that. The Engine class in the python tutorial:
-- has some game state (which we have in our State monad)
-- has some methods for each part of the game loop (which we have as just regular functions)
-- has some initialisation logic (which we have in our call to `withWindow`)
-- an event handler (which again, is just a bunch of functions glued together. we...can just use functions)
--}
+-- this is all our existing part 1 code.
 
 screenSize :: V2
 screenSize = V2 100 50
@@ -33,19 +28,6 @@ initialPlayerPosition :: V2
 initialPlayerPosition = V2 20 20
 
 type Game a = StateT WorldState IO a
-
-data WorldState = WorldState
-  { objects :: IM.IntMap Object
-  , pendingQuit :: Bool
-  }
-
-main :: IO ()
-main = flip evalStateT (WorldState initialPlayerPosition False) $ do
-  withWindow
-    defaultWindowOptions { size = Just screenSize }
-    (return ())
-    (\_init -> runLoop)
-    (return ())
 
 data Direction = LeftDir | RightDir | UpDir | DownDir
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -76,11 +58,32 @@ calculateNewLocation dir v =
   in
     updateIt v
 
-
 modifyX :: (Int -> Int) -> V2 -> V2
 modifyX f (V2 x y) = V2 (f x) y
 modifyY :: (Int -> Int) -> V2 -> V2
 modifyY f (V2 x y) = V2 x (f y)
+
+{-
+For part 2, the original tutorial extracts things to an "Engine" class. We don't need to do that. The Engine class in the python tutorial:
+- has some game state (which we have in our State monad)
+- has some methods for each part of the game loop (which we have as just regular functions)
+- has some initialisation logic (which we have in our call to `withWindow`)
+- an event handler (which again, is just a bunch of functions glued together. we...can just use functions)
+-}
+
+
+data WorldState = WorldState
+  { objects :: IM.IntMap Object
+  , pendingQuit :: Bool
+  }
+
+main :: IO ()
+main = flip evalStateT (WorldState initialPlayerPosition False) $ do
+  withWindow
+    defaultWindowOptions { size = Just screenSize }
+    (return ())
+    (\_init -> runLoop)
+    (return ())
 
 runLoop :: Game ()
 runLoop = do
