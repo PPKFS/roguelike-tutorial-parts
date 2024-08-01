@@ -20,6 +20,7 @@ but, mostly the distinction in here for our purposes is because haskell data is 
 -- whilst it would be nicer to then use newtype wrapped entities for indexing into our maps of objects,
 -- it's a little bit fiddly.
 newtype Entity = Entity { unEntity :: Int }
+  deriving (Show, Eq, Ord, Num)
 
 
 

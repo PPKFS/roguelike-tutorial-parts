@@ -18,6 +18,8 @@ import Control.Monad (when)
 
 import HsRogue.Object
 import qualified Data.IntMap as IM
+import Rogue.Colour
+import Data.Text (singleton)
 
 -- this is all our existing part 1 code.
 
@@ -70,36 +72,95 @@ For part 2, the original tutorial extracts things to an "Engine" class. We don't
 - has some initialisation logic (which we have in our call to `withWindow`)
 - an event handler (which again, is just a bunch of functions glued together. we...can just use functions)
 -}
-
+whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()
+whenJust Nothing _ = return ()
+whenJust (Just x) f = f x
 
 data WorldState = WorldState
   { objects :: IM.IntMap Object
+  , entityCounter :: Entity
   , pendingQuit :: Bool
   }
 
+playerId :: Entity
+playerId = Entity 0
+
 main :: IO ()
-main = flip evalStateT (WorldState initialPlayerPosition False) $ do
+main = flip evalStateT (WorldState IM.empty 0 False) $ do
   withWindow
     defaultWindowOptions { size = Just screenSize }
     (return ())
-    (\_init -> runLoop)
+    (\_init -> do
+      _ <- buildWorld
+      runLoop)
     (return ())
+
+addObject :: V2 -> Renderable -> Game ()
+addObject pos renderable = do
+  e <- gets entityCounter
+  objs <- gets objects
+  let newObj = Object e pos renderable
+  modify (\w -> w { entityCounter = e + 1, objects = IM.insert (unEntity e) newObj objs })
+
+buildWorld :: Game ()
+buildWorld = do
+  addObject initialPlayerPosition (Renderable '@' (Colour 0xFFFFFFFF) Nothing)
+  addObject (initialPlayerPosition - V2 5 5)) (Renderable '@' (Colour 0xFF66FF00) Nothing)
+
+getObject :: Entity -> Game Object
+getObject (Entity e) = do
+  mbObject <- gets (IM.lookup e . objects)
+  case mbObject of
+    Just o -> return o
+    Nothing -> error $ "Could not find object with ID " <> show (Entity e)
+
+modifyObject :: Entity -> (Object -> Object) -> Game ()
+modifyObject (Entity e) f = do
+  objs <- gets objects
+  modify (\w -> w { objects = IM.update (Just . f) e objs })
+
+setObject :: Entity -> Object -> Game ()
+setObject e o = modifyObject e (const o)
+
+render :: Game ()
+render = do
+  terminalClear
+  objects <- gets objects
+  mapM_ renderObject objects
+  terminalRefresh
+
+renderObject :: Object -> Game ()
+renderObject o = do
+  let r = renderable o
+  terminalColor (foregroundColour r)
+  whenJust (backgroundColor r) terminalBkColor
+  let (V2 x y) = position o
+  _ <- terminalPrintText x y (singleton (character r))
+  return ()
+
+quitNowPending :: Game ()
+quitNowPending = modify (\ws -> ws { pendingQuit = True})
+
+keybinds :: M.Map Keycode (Game ())
+keybinds = M.fromList $
+  [ (TkEsc, quitNowPending)
+  ] <>
+  map (\(key, dir) -> (key, movePlayer dir)) (M.toList movementKeys)
+
+movePlayer :: Direction -> Game ()
+movePlayer dir = do
+  p <- getObject playerId
+  let newPosition = calculateNewLocation dir (position p)
+  modifyObject playerId (\p' -> p' { position = newPosition })
 
 runLoop :: Game ()
 runLoop = do
-  terminalClear
-  playerPos <- gets playerPosition
-  _ <- withV2 playerPos terminalPrintText "@"
-  terminalRefresh
+  render
   _ <- handleEvents Blocking $ \case
-    WindowEvent WindowClose -> modify (\worldState -> worldState { pendingQuit = True})
-    Keypress TkEsc -> modify (\worldState -> worldState { pendingQuit = True})
-    Keypress other -> case asMovement other of
-      Just dir -> modify (\worldState ->
-        worldState
-          { playerPosition = calculateNewLocation dir (playerPosition worldState)
-          })
+    WindowEvent WindowClose -> quitNowPending
+    WindowEvent Resize -> return ()
+    Keypress key -> case M.lookup key keybinds of
+      Just action -> action
       Nothing -> return ()
-    _ -> return ()
   shouldContinue <- not <$> gets pendingQuit
   when shouldContinue runLoop

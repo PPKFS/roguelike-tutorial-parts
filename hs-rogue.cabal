@@ -29,6 +29,7 @@ executable hs-rogue-simple
         , roguefunctor
         , containers
         , transformers
+        , text
     hs-source-dirs:   app-simple
     default-language: GHC2021
     ghc-options: -Wall
