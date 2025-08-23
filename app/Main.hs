@@ -21,7 +21,7 @@ import Rogue.Window ( withWindow )
 
 import HsRogue.Map
 import HsRogue.MapGen
-import HsRogue.Object
+import HsRogue.Actor
 import HsRogue.Renderable
 import HsRogue.World
 import qualified Data.Map as M
@@ -99,11 +99,11 @@ runLoop = do
       Just dir -> do
         w <- get
         playerObject <- getPlayer
-        let potentialNewLocation = calculateNewLocation dir (objectPosition playerObject)
+        let potentialNewLocation = calculateNewLocation dir (actorPosition playerObject)
             tileAtLocation = tiles (tileMap w) !?@ potentialNewLocation
         case tileAtLocation of
           Just t
-            | walkable t -> updateActor playerObject (moveObject potentialNewLocation)
+            | walkable t -> updateActor playerObject (moveActor potentialNewLocation)
           _ -> return ()
       Nothing -> return ()
   shouldQuit <- gets pendingQuit
@@ -121,6 +121,6 @@ renderActors :: GameMonad m => m ()
 renderActors = do
   w <- get
   forM_ (actors w) $ \actor -> do
-    let r = objectRenderable actor
+    let r = actorRenderable actor
     terminalColour (foreground r)
-    printChar (objectPosition actor) (glyph r)
+    printChar (actorPosition actor) (glyph r)
