@@ -17,16 +17,16 @@ data ActorData = ActorData
   , renderable :: Renderable
   }
 
-type Actor = RF.Object ActorData ()
+type Actor = RF.Object () ActorData
 
 newtype ActorEntity = ActorEntity { unActor :: Entity }
   deriving (Eq, Ord, Show, Enum)
 
-actorRenderable :: RF.Object ActorData a -> Renderable
+actorRenderable :: RF.Object a ActorData -> Renderable
 actorRenderable = renderable . objectData
 
-actorPosition :: RF.Object ActorData a -> V2
+actorPosition :: RF.Object a ActorData -> V2
 actorPosition = position . objectData
 
-moveActor :: V2 -> RF.Object ActorData a -> RF.Object ActorData a
+moveActor :: V2 -> RF.Object a ActorData -> RF.Object a ActorData
 moveActor pos o = o { objectData = (objectData o) {position = pos } }
