@@ -60,26 +60,62 @@ Our game objects for the specific game we're making will now look like `type Gam
 
 We can go one step further (safer): we define a newtype wrapper around `Entity` such as `newtype ActorEntity = ActorEntity Entity` and not export the constructor. Then, we define the only way to make an `ActorEntity` to go via `tagActor :: Actor -> ActorEntity`. We can now store object references that are guaranteed to have the correct type when resolved!
 
-# Object Module
+## The Actor module
 
-We will start with a simpler set of object types: we don't have items or tile entities yet, only actors (and only one actor - the player - until part 5). Every actor will have a position and a renderable.
+We will start with a simpler set of object types: we don't have items or tile entities yet, only actors (and only one actor - the player - until part 5). We also don't currently have anything like the `ObjectSpecifics` above, so we'll use the unit type `()` as a placeholder.
 
-
-All of World
+Every actor will have a position and a renderable. We'll also want some convenience functions for accessing these fields in the object data.
 
 ```haskell
-module HsRogue.World
-  ( addActor
-  , WorldState(..)
-  , getPlayer
-  , updateActor
+module HsRogue.Actor
+  ( actorRenderable
+  , actorPosition
+  , moveActor
+  , Actor
+  , ActorEntity(..)
+  , ActorData(..)
   ) where
+
+import HsRogue.Prelude
+import HsRogue.Renderable
+import Rogue.Objects.Object as RF ( Object(..) )
+import Rogue.Objects.Entity ( Entity(..) )
+
+data ActorData = ActorData
+  { position :: V2
+  , renderable :: Renderable
+  }
+
+type Actor = RF.Object () ActorData
+
+newtype ActorEntity = ActorEntity { unActor :: Entity }
+  deriving (Eq, Ord, Show, Enum)
+
+actorRenderable :: RF.Object ActorData a -> Renderable
+actorRenderable = renderable . objectData
+
+actorPosition :: RF.Object ActorData a -> V2
+actorPosition = position . objectData
+
+moveActor :: V2 -> RF.Object ActorData a -> RF.Object ActorData a
+moveActor pos o = o { objectData = (objectData o) { position = pos } }
+```
+
+This is fairly straightforward. Yes, `moveActor` is kind of clunky - and that's a level of nesting that's only one deep. Keep that in mind for later!
+
+One thing we want to try to enforce is a separation of pure data and pure functions from stateful or effectful (as in, functions that have effects) functions. Matt Parsons' [Three Layer Haskell Cake](https://www.parsonsmatt.org/2018/03/22/three_layer_haskell_cake.html) is a wonderful and relatively straightforward read about Haskell architecture. That's why we have pure functions like `moveActor` in comparison to something that may look like `moveActor :: MonadState WorldState m => V2 -> ActorEntity -> m ()`. We'll probably still have functions that look like this second one, but they'll be further down the module hierarchy.
+
+We'll move the definition of `WorldState` from last time out of `Main` and into its own `HsRogue.World` module. With our new `Actor` type under our belt, we'll add a reference ID to the player as well as adding a new `Store Actor` field. As mentioned above, this is the same as `IntMap` (or `Data.Map`) from `containers`, except specialised to use `Entity` keys. We'll eventually add a store for each of `Item` and `TileEntity` when we get around to it.
+
+
+```haskell
+module HsRogue.World where
 
 import HsRogue.Prelude
 
 import Data.Coerce (coerce)
 import HsRogue.Map hiding (renderable)
-import HsRogue.Object
+import HsRogue.Actor
 
 import HsRogue.Renderable
 import Rogue.Monad ( MonadRogue, makeObject )
@@ -93,7 +129,11 @@ data WorldState = WorldState
   , actors :: Store Actor
   , pendingQuit :: Bool
   } deriving (Generic)
+```
 
+Next. we want to be able to *add* a new actor to the world. This should deal with creating an object (and ensuring we don't assign two objects the same `Entity`), updating the store, and finally giving us back the `ActorEntity` so we can reference it. Thankfully, `roguefunctor` gives us `makeObject` which assembles an `Object` and uses a global entity counter behind the scenes to ensure they are unique.
+
+```haskell
 addActor :: (MonadState WorldState m, MonadRogue m) => Text -> Renderable -> V2 -> m ActorEntity
 addActor name r pos = do
   let objectData = ObjectData
@@ -105,7 +145,11 @@ addActor name r pos = do
   let newStore = insert (objectId o) o acStore
   modify (\w -> w { actors = newStore })
   return (ActorEntity (objectId o))
+```
 
+We don't really care about the `ObjectKind` for now, but we fill it out anyway so we don't forget about it.a
+
+```haskell
 getPlayer :: MonadState WorldState m => m Actor
 getPlayer = do
   w <- get
@@ -113,50 +157,4 @@ getPlayer = do
 
 updateActor :: (MonadState WorldState m, HasID a) => a -> (Actor -> Actor) -> m ()
 updateActor a f = modify (\w -> w { actors = update (coerce $ getID a) f (actors w) })
-```
-
-```haskell
-import Rogue.Objects.Entity ( Entity(..) )
-import Rogue.Objects.Store ( emptyStore )
-import Rogue.Rendering.Print ( printChar )
-
-import HsRogue.Object
-
-import HsRogue.World
-
-let addObjectsToWorld = do
-        p <- addActor "player" playerRenderable (centre firstRoom)
-        modify (\w -> w { player = p })
-      initialWorld = (WorldState
-        { tileMap = Tiles madeMap black
-        , pendingQuit = False
-        , actors = emptyStore
-        , player = ActorEntity (Entity (-1))
-        })
-  execStateT addObjectsToWorld initialWorld
-
-runLoop :: GameMonad m => m ()
-runLoop = do
-  terminalSet_ "font: KreativeSquare.ttf, size=16x16"
-  terminalClear
-  renderMap
-  renderActors
-
-Just dir -> do
-        w <- get
-        playerObject <- getPlayer
-        let potentialNewLocation = calculateNewLocation dir (objectPosition playerObject)
-            tileAtLocation = tiles (tileMap w) !?@ potentialNewLocation
-        case tileAtLocation of
-          Just t
-            | walkable t -> updateActor playerObject (moveObject potentialNewLocation)
-
-renderActors :: GameMonad m => m ()
-renderActors = do
-  w <- get
-  forM_ (actors w) $ \actor -> do
-    let r = objectRenderable actor
-    terminalColour (foreground r)
-    printChar (objectPosition actor) (glyph r)
-
 ```

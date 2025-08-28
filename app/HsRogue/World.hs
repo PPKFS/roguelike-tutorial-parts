@@ -9,7 +9,7 @@ import HsRogue.Prelude
 
 import Data.Coerce (coerce)
 import HsRogue.Map hiding (renderable)
-import HsRogue.Object
+import HsRogue.Actor
 
 import HsRogue.Renderable
 import Rogue.Monad ( MonadRogue, makeObject )
@@ -26,7 +26,7 @@ data WorldState = WorldState
 
 addActor :: (MonadState WorldState m, MonadRogue m) => Text -> Renderable -> V2 -> m ActorEntity
 addActor name r pos = do
-  let objectData = ObjectData
+  let objectData = ActorData
         { position = pos
         , renderable = r
         }
